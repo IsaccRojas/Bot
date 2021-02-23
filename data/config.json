@@ -1,8 +1,8 @@
 {
-	"BotToken":"NDg2NTU1MDAzMjA1NzEzOTMw.W46hqA.A_-lKjdP-xc7itXfs3QSJd6552g",
-	"BotTrigger":"~q",
-	"CommandEnabled":true,
-	"RoleEnabled":true,
-	"RoleGuild":"Oh",
-	"RoleChannel":"bot"
+	"BotToken":"",
+	"BotTrigger":"",
+	"CommandEnabled":false,
+	"RoleEnabled":false,
+	"RoleGuild":"",
+	"RoleChannel":""
 }
