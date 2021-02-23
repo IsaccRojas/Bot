@@ -38,10 +38,14 @@ will specify a new custom command, which can be loaded on startup and reloaded v
 built-in `reloadroles` command. Custom commands have the following syntax:
 
 >[command name];[text];[image URL(s)]
+
 e.g.
+
 >hi;Hi, \1!;https://www.website.com/wave.png
+
 which can then be used as
-![Custom command example.](https://imgur.com/ToUnQ8u)
+
+![Custom command example.](https://i.imgur.com/ToUnQ8u.png)
 
 The text field uses a `\[digit]` formatting, that allows you to specify a number between 0-9
 in which parameters to the command will be emplaced. `\1` refers to the 1st parameter, `\2`
