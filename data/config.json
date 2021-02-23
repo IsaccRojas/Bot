@@ -1,8 +1,0 @@
-{
-	"BotToken":"",
-	"BotTrigger":"",
-	"CommandEnabled":false,
-	"RoleEnabled":false,
-	"RoleGuild":"",
-	"RoleChannel":""
-}
