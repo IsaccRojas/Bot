@@ -43,7 +43,7 @@ built-in `reloadroles` command. Custom commands have the following syntax:
 
 e.g.
 
->hi;Hi, \1!;https://www.website.com/wave.png
+	hi;Hi, \1!;https://www.website.com/wave.png
 
 which can then be used as
 
@@ -56,11 +56,11 @@ refers to the 2nd parameter, etc. `\0` refers to user of the command.
 Multiple images can be specified by separating them with commas, and one will be randomly
 selected, e.g.:
 
->hi;Hi, \1!;https://www.website.com/wave1.png,https://www.website.com/wave2.png
+	hi;Hi, \1!;https://www.website.com/wave1.png,https://www.website.com/wave2.png
 
 Images are also optional. The following is valid:
 
->hi;Hi, \1!;
+	hi;Hi, \1!;
 
 ### Role Assignment
 
