@@ -18,11 +18,13 @@ The configuration is specified by the `data/config.json` file, and has the follo
 
 ### Commands
 
-Messages sent in guilds the bot is in will be checked for the keyword specified by 
+Messages sent in guilds the bot client is in will be checked for the keyword specified by 
 the `data/config.json`'s `BotTrigger` keyword, followed by a space:
 
 >[BotTrigger] [...]
+
 e.g.
+
 >!bot help
 
 The following commands are built into the bot by default:
@@ -45,7 +47,7 @@ e.g.
 
 which can then be used as
 
-![Custom command example.](https://i.imgur.com/ToUnQ8u.png)
+![Custom command example.](https://i.imgur.com/qZhsXpD.png)
 
 The text field uses a `\[digit]` formatting, that allows you to specify a number between 0-9
 in which parameters to the command will be emplaced. `\1` refers to the 1st parameter, `\2`
@@ -56,10 +58,39 @@ selected, e.g.:
 
 >hi;Hi, \1!;https://www.website.com/wave1.png,https://www.website.com/wave2.png
 
-Images are also optional, the following is valid:
+Images are also optional. The following is valid:
 
 >hi;Hi, \1!;
 
 ### Role Assignment
 
-WIP
+Support for role assignment is implemented in the form of a special message sent and managed
+in a guild's channel specified by the `data/config.json`'s `RoleGuild` and `RoleChannel`
+fields.
+
+Reactions added and removed on this message will be used to add and remove roles on the reacting
+users. The roles to allow assignment/unassignment of with a corresponding emote to react
+with are specified via the `data/roles.txt` file, per line, with the following syntax:
+
+>[role name];[emote]
+
+e.g.
+
+>Red;red_circle
+>Blue;large_blue_circle
+
+which creates the following message:
+
+![Role message example.](https://i.imgur.com/dOEKQHT.png)
+
+At least one role must be specified for the message to be spawned. Users can then react with the
+listed emotes and receive their corresponding role, and remove the reaction to have that role removed.
+
+**Note:** this system uses the `data/emotes.csv` file to get a list of all standard Unicode
+emotes. This may be outdated past the time of this writing. Last update: 2:44 P.M. CST 2/23/2021
+
+### Additional Notes
+
+This was created as a small project to occupy some of my free time, and was made for personal use, as
+well as for friends. As such, I likely will not be consistently maintaining this software. That said,
+feel free to use the bot and/or its source code as you wish.
