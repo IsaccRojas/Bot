@@ -76,8 +76,8 @@ with are specified via the `data/roles.txt` file, per line, with the following s
 
 e.g.
 
->Red;red_circle
->Blue;large_blue_circle
+	Red;red_circle
+	Blue;large_blue_circle
 
 which creates the following message:
 
