@@ -75,6 +75,7 @@ class CommandHandler {
                 //ensure right size
                 if (line_arr.Length != 4) {
                     Console.WriteLine("WARN: data/commands.txt: invalid number of semi-colon separated items (line " + i + ").");
+                    i += 1;
                     continue;
                 }
 
@@ -88,6 +89,7 @@ class CommandHandler {
                 
                 if (name == "") {
                     Console.WriteLine("WARN: data/commands.txt: command name must not be empty (line " + i + ").");
+                    i += 1;
                     continue;
                 }
 
