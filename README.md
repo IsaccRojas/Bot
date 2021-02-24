@@ -39,11 +39,11 @@ Custom embed message commands can be created via the `data/commands.txt` file. E
 will specify a new custom command, which can be loaded on startup and reloaded via the
 built-in `reloadroles` command. Custom commands have the following syntax:
 
->[command name];[text];[image URL(s)]
+>[command name];[text];[image URL(s)];[admin]
 
 e.g.
 
-	hi;Hi, \1!;https://www.website.com/wave.png
+	hi;Hi, \1!;https://www.website.com/wave.png;false
 
 which can then be used as
 
@@ -58,9 +58,14 @@ selected, e.g.:
 
 	hi;Hi, \1!;https://www.website.com/wave1.png,https://www.website.com/wave2.png
 
-Images are also optional. The following is valid:
+Text, images, and administrator privileges are optional (defaults to true). The following examples are valid:
 
-	hi;Hi, \1!;
+	blank;;;false
+	blankadmin;;;
+	textonly;Here's some text.;;false
+	textonlyadmin;Here's some text, only for admins.;;true
+	twoimages;;https://www.website.com/wave1.png,https://www.website.com/wave2.png;false
+	oneimageadmin;;https://www.website.com/wave1.png;
 
 ### Role Assignment
 
