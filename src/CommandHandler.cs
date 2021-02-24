@@ -250,22 +250,24 @@ class CommandHandler {
 
         String help_str = "Available commands:\n";
         for (int i = 0; i < command_arr.Length; i += 1) {
-            help_str += command_arr[i].Name + "\n\t" + command_arr[i].Description;
-
-            //check permissions for command
-            if (command_arr[i].Admin && user.GuildPermissions.Administrator)
-                help_str += " (admin only)";
+            if (command_arr[i].Admin)
+                if (!user.GuildPermissions.Administrator)
+                    continue;
             
+            help_str += command_arr[i].Name + "\n\t" + command_arr[i].Description;
+            if (command_arr[i].Admin)
+                help_str += " (admin only)";
             help_str += "\n\tSyntax: " + command_arr[i].Syntax + "\n";
         }
             
         for (int i = 0; i < customcommand_list.Count; i += 1) {
-            help_str += customcommand_list[i].Name + "\n\t" + customcommand_list[i].Description;
+            if (customcommand_list[i].Admin)
+                if (!user.GuildPermissions.Administrator)
+                    continue;
 
-            //check permissions for command
-            if (customcommand_list[i].Admin && user.GuildPermissions.Administrator)
+            help_str += customcommand_list[i].Name + "\n\t" + customcommand_list[i].Description;
+            if (customcommand_list[i].Admin)
                 help_str += " (admin only)";
-                
             help_str += "\n\tSyntax: " + customcommand_list[i].Syntax + "\n";
         }
         
