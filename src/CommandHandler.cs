@@ -21,7 +21,7 @@ class CustomCommand : Command {
     public int NumParams { get; }
     public String[] Imgs { get; }
 
-    public CustomCommand(String commandname, String commanddesc, String commandsyntax, String text, int num_params, String[] images) : base(commandname, commanddesc, commandsyntax, null) {
+    public CustomCommand(String commandname, String commanddesc, String commandsyntax, String text, int num_params, String[] images, bool admin) : base(commandname, commanddesc, commandsyntax, admin, null) {
         Text = text;
         NumParams = num_params;
         Imgs = images;
@@ -50,14 +50,14 @@ class CommandHandler {
         //load default commands
         if (command_arr == null) {
             command_arr = new Command[] {
-                new Command("help", "Gets information of available commands.", "``" + _config.BotTrigger + " help``", RoutineHelp),
-                new Command("poll", "Spawns a message in a poll format.", "``" + _config.BotTrigger + " poll \"[title]\" \"[item]\"(...) [Optional: URL]`` e.g. ``" + _config.BotTrigger +" poll \"Which are better?\" \"Apples\" \"Oranges\" \"Pears\" https://i.imgur.com/85wyR2x.jpg``", Command.RoutinePoll),
-                new Command("delete", "Deletes messages. (admin)", "``" + _config.BotTrigger + " delete [Optional: number of messages, between 0-1000]`` e.g. ``" + _config.BotTrigger + " delete 10``", Command.RoutineDelete),
-                new Command("kick", "Kicks user. (admin)", "``" + _config.BotTrigger + " kick @[Username]`` e.g. ``" + _config.BotTrigger + " kick @Bot``", Command.RoutineKick),
-                new Command("ban", "Bans user. (admin)", "``" + _config.BotTrigger + " ban @[Username] [Optional: number of days to remove messages of from user, between 0-7]`` e.g. ``" + _config.BotTrigger + " ban @Bot 5``", Command.RoutineBan),
-                new Command("unban", "Unbans user. (admin)", "``" + _config.BotTrigger + " unban @[Username]`` e.g. ``" + _config.BotTrigger + " unban @Bot``", Command.RoutineUnban),
-                new Command("reloadcommands", "Reloads command handler. (admin)", "``" + _config.BotTrigger + " reloadcommands``", RoutineReloadCommands),
-                new Command("reloadroles", "Reloads role handler. (admin)", "``" + _config.BotTrigger + " reloadroles``", RoutineReloadRoles),
+                new Command("help", "Gets information of available commands.", "``" + _config.BotTrigger + " help``", false, RoutineHelp),
+                new Command("poll", "Spawns a message in a poll format.", "``" + _config.BotTrigger + " poll \"[title]\" \"[item]\"(...) [Optional: URL]`` e.g. ``" + _config.BotTrigger +" poll \"Which are better?\" \"Apples\" \"Oranges\" \"Pears\" https://i.imgur.com/85wyR2x.jpg``", false, Command.RoutinePoll),
+                new Command("delete", "Deletes messages.", "``" + _config.BotTrigger + " delete [Optional: number of messages, between 0-1000]`` e.g. ``" + _config.BotTrigger + " delete 10``", true, Command.RoutineDelete),
+                new Command("kick", "Kicks user.", "``" + _config.BotTrigger + " kick @[Username]`` e.g. ``" + _config.BotTrigger + " kick @Bot``", true, Command.RoutineKick),
+                new Command("ban", "Bans user.", "``" + _config.BotTrigger + " ban @[Username] [Optional: number of days to remove messages of from user, between 0-7]`` e.g. ``" + _config.BotTrigger + " ban @Bot 5``", true, Command.RoutineBan),
+                new Command("unban", "Unbans user", "``" + _config.BotTrigger + " unban @[Username]`` e.g. ``" + _config.BotTrigger + " unban @Bot``", true, Command.RoutineUnban),
+                new Command("reloadcommands", "Reloads command handler.", "``" + _config.BotTrigger + " reloadcommands``", true, RoutineReloadCommands),
+                new Command("reloadroles", "Reloads role handler.", "``" + _config.BotTrigger + " reloadroles``", true, RoutineReloadRoles),
             };
         }
 
@@ -73,13 +73,23 @@ class CommandHandler {
                 String[] line_arr = line.Split(';');
                 
                 //ensure right size
-                if (line_arr.Length <= 1 || line_arr.Length >= 4) {
+                if (line_arr.Length != 4) {
                     Console.WriteLine("WARN: data/commands.txt: invalid number of semi-colon separated items (line " + i + ").");
                     continue;
                 }
 
+                //get string fields
                 String name = line_arr[0];
                 String text = line_arr[1];
+                String[] img_arr = line_arr[2].Split(',');
+                bool admin = true;
+                if (!(Boolean.TryParse(line_arr[3], out admin)))
+                    admin = true;
+                
+                if (name == "") {
+                    Console.WriteLine("WARN: data/commands.txt: command name must not be empty (line " + i + ").");
+                    continue;
+                }
 
                 //look for parameter syntax in order
                 int num_params = 0;
@@ -100,20 +110,15 @@ class CommandHandler {
                     syntax += " [name " + (j + 1).ToString() + "]";
                 syntax += "``";
 
-                //get images
-                String[] img_arr = null;
-                if (line_arr.Length == 3) {
-                    img_arr = line_arr[2].Split(',');
-                }
-
                 customcommand_list_tmp.Add(
                     new CustomCommand(
                         name,
-                        "(custom command)",
+                        "Custom command.",
                         syntax,
                         text,
                         num_params,
-                        img_arr
+                        img_arr,
+                        admin
                     )
                 );
 
@@ -166,6 +171,15 @@ class CommandHandler {
         Command command = FindCommand(msg_array[1]);
         try {
             if (command != null) {
+
+                //check permissions for command
+                if (command.Admin) {
+                    var user = context.Guild.GetUser(msg.Author.Id);
+                    if (!(user.GuildPermissions.Administrator)) {
+                        await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+                        return;
+                    }
+                }
 
                 if (command is CustomCommand) {
                     await CustomExecute((CustomCommand)(command), context, msg);
@@ -226,49 +240,53 @@ class CommandHandler {
 
     //get list of available commands
     private async Task RoutineHelp(SocketCommandContext context, SocketUserMessage msg) {
+        var user = context.Guild.GetUser(msg.Author.Id);
+        if (user == null) {
+            await context.Channel.SendMessageAsync("User is invalid. Could not send DM.");
+            return;
+        }
+
         String help_str = "Available commands:\n";
-        for (int i = 0; i < command_arr.Length; i += 1)
-            help_str += command_arr[i].Name + "\n\t" + command_arr[i].Description + "\n\tSyntax: " + command_arr[i].Syntax + "\n";
-        for (int i = 0; i < customcommand_list.Count; i += 1)
-            help_str += customcommand_list[i].Name + "\n\t" + customcommand_list[i].Description + "\n\tSyntax: " + customcommand_list[i].Syntax + "\n";
+        for (int i = 0; i < command_arr.Length; i += 1) {
+            help_str += command_arr[i].Name + "\n\t" + command_arr[i].Description;
+
+            //check permissions for command
+            if (command_arr[i].Admin && user.GuildPermissions.Administrator)
+                help_str += " (admin only)";
+            
+            help_str += "\n\tSyntax: " + command_arr[i].Syntax + "\n";
+        }
+            
+        for (int i = 0; i < customcommand_list.Count; i += 1) {
+            help_str += customcommand_list[i].Name + "\n\t" + customcommand_list[i].Description;
+
+            //check permissions for command
+            if (customcommand_list[i].Admin && user.GuildPermissions.Administrator)
+                help_str += " (admin only)";
+                
+            help_str += "\n\tSyntax: " + customcommand_list[i].Syntax + "\n";
+        }
         
         //send DM
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user != null) {
-            await user.SendMessageAsync(help_str);
-            await context.Channel.SendMessageAsync("DM sent.");
-        } else {
-            await context.Channel.SendMessageAsync("User is invalid. Could not send DM.");
-        }
+        await user.SendMessageAsync(help_str);
+        await context.Channel.SendMessageAsync("DM sent.");
     }
 
     //reload bot's (this) command handler
     private async Task RoutineReloadCommands(SocketCommandContext context, SocketUserMessage msg) {
-        //determine if sufficient permissions to execute command
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user.GuildPermissions.Administrator) {
-            if (LoadCommands() != 0)
-                await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
-            else
-                await context.Channel.SendMessageAsync("Reload succeeded.");
-        }
+        if (LoadCommands() != 0)
+            await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
         else
-            await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+            await context.Channel.SendMessageAsync("Reload succeeded.");
     }
 
     //reload bot's role handler
     private async Task RoutineReloadRoles(SocketCommandContext context, SocketUserMessage msg) {
-        //determine if sufficient permissions to execute command
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user.GuildPermissions.Administrator) {
-            if (_loadrolesfn == null ||(await _loadrolesfn()) != 0) {
-                if (_loadrolesfn == null)
-                    Console.WriteLine("ERROR: RoutineReloadRoles: _loadrolesfn() is null.");
-                await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
-            } else
-                await context.Channel.SendMessageAsync("Reload succeeded.");
-        }
-        else
-            await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+        if (_loadrolesfn == null ||(await _loadrolesfn()) != 0) {
+            if (_loadrolesfn == null)
+                Console.WriteLine("ERROR: RoutineReloadRoles: _loadrolesfn() is null.");
+            await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
+        } else
+            await context.Channel.SendMessageAsync("Reload succeeded.");
     }
 }

@@ -58,13 +58,17 @@ class Command {
     public String Name { get; }
     public String Description { get; }
     public String Syntax { get; }
+    public bool Admin { get; }
     protected CommandRoutine _commandroutine;
-    public Command(String commandname, String commanddesc, String commandsyntax, CommandRoutine commandroutine = null) {
+
+    public Command(String commandname, String commanddesc, String commandsyntax, bool admin, CommandRoutine commandroutine = null) {
         Name = commandname;
         Description = commanddesc;
         Syntax = commandsyntax;
+        Admin = admin;
         _commandroutine = commandroutine;
     }
+
     public Task Exec(SocketCommandContext context, SocketUserMessage msg) {
         if (_commandroutine != null)
             return _commandroutine(context, msg);
@@ -126,119 +130,91 @@ class Command {
 
     //delete number of messages
     public static async Task RoutineDelete(SocketCommandContext context, SocketUserMessage msg) {
-        //determine if sufficient permissions to execute command
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user.GuildPermissions.ManageMessages) {
-
-            //get number of messages to delete
-            int del_num = 0;
-            String[] msg_array = msg.ToString().Split(' ');
-            if (msg_array.Length < 3) {
-                //use default number
-                del_num = 1;
-            } else if (!(int.TryParse(msg_array[2], out del_num) && del_num >= 0 && del_num <= 1000)) {
-                //failed to get specified number
-                throw new CommandException("invalid number of messages");
-            }
-
-            var messages_pages = context.Channel.GetMessagesAsync(msg, Direction.Before, del_num);
-            var messages = await AsyncEnumerableExtensions.FlattenAsync<IMessage>(messages_pages);
-            var i = 0;
-            foreach (var message in messages) {
-                await context.Channel.DeleteMessageAsync(message);
-                i += 1;
-            }
-            
-            await context.Channel.SendMessageAsync(i.ToString() + " message(s) deleted.");
+        //get number of messages to delete
+        int del_num = 0;
+        String[] msg_array = msg.ToString().Split(' ');
+        if (msg_array.Length < 3) {
+            //use default number
+            del_num = 1;
+        } else if (!(int.TryParse(msg_array[2], out del_num) && del_num >= 0 && del_num <= 1000)) {
+            //failed to get specified number
+            throw new CommandException("invalid number of messages");
         }
-        else
-            await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+
+        var messages_pages = context.Channel.GetMessagesAsync(msg, Direction.Before, del_num);
+        var messages = await AsyncEnumerableExtensions.FlattenAsync<IMessage>(messages_pages);
+        var i = 0;
+        foreach (var message in messages) {
+            await context.Channel.DeleteMessageAsync(message);
+            i += 1;
+        }
+        
+        await context.Channel.SendMessageAsync(i.ToString() + " message(s) deleted.");
     }
 
     //kick user
     public static async Task RoutineKick(SocketCommandContext context, SocketUserMessage msg) {
-        //determine if sufficient permissions to execute command
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user.GuildPermissions.KickMembers || user.GuildPermissions.Administrator) {
-
-            //determine if correct number of parameters
-            String[] msg_array = msg.ToString().Split(' ');
-            if (msg_array.Length < 3) {
-                throw new ParameterException("insufficient parameters");
-            }
-
-            //determine if user is valid
-            ulong id = Util.GetSubstringUInt64(msg_array[2]);
-            if (id == 0)
-                throw new CommandException("invalid user");
-
-            //kick user
-            await context.Guild.GetUser(id).KickAsync(reason: "Bot command");
-            await context.Channel.SendMessageAsync("User kicked.");
+        //determine if correct number of parameters
+        String[] msg_array = msg.ToString().Split(' ');
+        if (msg_array.Length < 3) {
+            throw new ParameterException("insufficient parameters");
         }
-        else
-            await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+
+        //determine if user is valid
+        ulong id = Util.GetSubstringUInt64(msg_array[2]);
+        if (id == 0)
+            throw new CommandException("invalid user");
+
+        //kick user
+        await context.Guild.GetUser(id).KickAsync(reason: "Bot command");
+        await context.Channel.SendMessageAsync("User kicked.");
     }
 
     //ban user
     public static async Task RoutineBan(SocketCommandContext context, SocketUserMessage msg) {
-        //determine if sufficient permissions to execute command
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user.GuildPermissions.BanMembers || user.GuildPermissions.Administrator) {
-
-            //determine if correct number of parameters
-            String[] msg_array = msg.ToString().Split(' ');
-            if (msg_array.Length < 3) {
-                throw new ParameterException("insufficient parameters");
-            }
-
-            //determine if user is valid
-            ulong id = Util.GetSubstringUInt64(msg_array[2]);
-            if (id == 0)
-                throw new CommandException("invalid user");
-
-            //determine if number of days is specified and valid
-            if (msg_array.Length == 4) {
-                int days = 0;
-                if (int.TryParse(msg_array[3], out days) && days >= 0 && days <= 7) {
-                    //ban user and delete number of days worth of message history
-                    await context.Guild.AddBanAsync(userId: id, pruneDays: days, reason: "Bot command");
-                    await context.Channel.SendMessageAsync("User banned, deleted " + msg_array[3] + " days of their message history.");
-                } else {
-                    throw new CommandException("invalid number of days");
-                }
-            } else {
-                //ban user with default number of days (0)
-                await context.Guild.AddBanAsync(userId: id, reason: "Bot command");
-                await context.Channel.SendMessageAsync("User banned.");
-            }
+        //determine if correct number of parameters
+        String[] msg_array = msg.ToString().Split(' ');
+        if (msg_array.Length < 3) {
+            throw new ParameterException("insufficient parameters");
         }
-        else
-            await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+
+        //determine if user is valid
+        ulong id = Util.GetSubstringUInt64(msg_array[2]);
+        if (id == 0)
+            throw new CommandException("invalid user");
+
+        //determine if number of days is specified and valid
+        if (msg_array.Length == 4) {
+            int days = 0;
+            if (int.TryParse(msg_array[3], out days) && days >= 0 && days <= 7) {
+                //ban user and delete number of days worth of message history
+                await context.Guild.AddBanAsync(userId: id, pruneDays: days, reason: "Bot command");
+                await context.Channel.SendMessageAsync("User banned, deleted " + msg_array[3] + " days of their message history.");
+            } else {
+                throw new CommandException("invalid number of days");
+            }
+        } else {
+            //ban user with default number of days (0)
+            await context.Guild.AddBanAsync(userId: id, reason: "Bot command");
+            await context.Channel.SendMessageAsync("User banned.");
+        }
     }
 
     //unban user
     public static async Task RoutineUnban(SocketCommandContext context, SocketUserMessage msg) {
-        //determine if sufficient permissions to execute command
-        var user = context.Guild.GetUser(msg.Author.Id);
-        if (user.GuildPermissions.BanMembers || user.GuildPermissions.Administrator) {
+        //determine if correct number of parameters
+        String[] msg_array = msg.ToString().Split(' ');
+        if (msg_array.Length < 3)
+            throw new ParameterException("insufficient parameters");
 
-            //determine if correct number of parameters
-            String[] msg_array = msg.ToString().Split(' ');
-            if (msg_array.Length < 3)
-                throw new ParameterException("insufficient parameters");
+        //determine if user is valid
+        ulong id = 0;
+        id = Util.GetSubstringUInt64(msg_array[2]);
+        if (id == 0)
+            throw new CommandException("invalid user");
 
-            //determine if user is valid
-            ulong id = 0;
-            id = Util.GetSubstringUInt64(msg_array[2]);
-            if (id == 0)
-                throw new CommandException("invalid user");
-
-            //unban user
-            await context.Guild.RemoveBanAsync(userId: id);
-            await context.Channel.SendMessageAsync("User unbanned.");
-        }
-        else
-            await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+        //unban user
+        await context.Guild.RemoveBanAsync(userId: id);
+        await context.Channel.SendMessageAsync("User unbanned.");
     }
 }
