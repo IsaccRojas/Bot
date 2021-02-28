@@ -133,8 +133,13 @@ class Util {
 
     //returns the Unicode character "regional_indicator_a" shifted by i
     public static string GetUnicodeLetterI(int i) {
-        if (i >= 26)
+        if (i >= 26 || i < 0)
             return "";
+        
+        //special case: return :b: instead of :regional_indicator_b:
+        if (i == 1)
+            return Char.ConvertFromUtf32(int.Parse("1F171", System.Globalization.NumberStyles.HexNumber));
+
         String unicode_a_str = "1F1E6";
         int unicode_a_str_int = int.Parse(unicode_a_str, System.Globalization.NumberStyles.HexNumber);
         unicode_a_str_int += (int)i;
