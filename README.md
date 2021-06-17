@@ -37,7 +37,7 @@ The following commands are built into the bot by default:
 
 Custom embed message commands can be created via the `data/commands.txt` file. Each line
 will specify a new custom command, which can be loaded on startup and reloaded via the
-built-in `reloadroles` command. Custom commands have the following syntax:
+built-in `reloadcommands` command. Custom commands have the following syntax:
 
 >[command name];[text];[image URL(s)];[admin]
 
