@@ -96,6 +96,6 @@ emotes. This may be outdated past the time of this writing. Last update: 2:44 P.
 
 ### Additional Notes
 
-This was created as a small project to occupy some of my free time, and was made for personal use, as
-well as for friends. As such, I likely will not be consistently maintaining this software. That said,
-feel free to use the bot and/or its source code as you wish.
+This was created as a small project to occupy some of my free time, and was made for personal use. 
+As such, I likely will not be consistently maintaining this software. That said, feel free to use
+the bot and/or its source code as you wish.
