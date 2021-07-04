@@ -224,7 +224,7 @@ class Bot {
 
         //send command context for message to command handler
         if (_commandhandler != null)
-            await _commandhandler.Execute(new SocketCommandContext(_client, msg), msg);
+            _commandhandler.Execute(new SocketCommandContext(_client, msg), msg);
     }
 
     private Task Log(LogMessage log) {

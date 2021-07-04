@@ -32,6 +32,7 @@ class CustomCommand : Command {
 delegate Task<int> LoadRolesFn();
 class CommandHandler {
     private Config _config = null;
+
     //reference to bot's role handler's load function
     private LoadRolesFn _loadrolesfn = null;
 
@@ -57,7 +58,7 @@ class CommandHandler {
                 new Command("ban", "Bans user.", "``" + _config.BotTrigger + " ban @[Username] [Optional: number of days to remove messages of from user, between 0-7]`` e.g. ``" + _config.BotTrigger + " ban @Bot 5``", true, Command.RoutineBan),
                 new Command("unban", "Unbans user", "``" + _config.BotTrigger + " unban @[Username]`` e.g. ``" + _config.BotTrigger + " unban @Bot``", true, Command.RoutineUnban),
                 new Command("reloadcommands", "Reloads command handler.", "``" + _config.BotTrigger + " reloadcommands``", true, RoutineReloadCommands),
-                new Command("reloadroles", "Reloads role handler.", "``" + _config.BotTrigger + " reloadroles``", true, RoutineReloadRoles),
+                new Command("reloadroles", "Reloads role handler.", "``" + _config.BotTrigger + " reloadroles``", true, RoutineReloadRoles)
             };
         }
 
@@ -156,6 +157,11 @@ class CommandHandler {
     public async Task Execute(SocketCommandContext context, SocketUserMessage msg) {
         String msg_str = msg.ToString();
 
+        //check formatting
+        String[] msg_array = msg.ToString().Split(' ');
+        if (msg_array[0] != _config.BotTrigger)
+            return;
+
         //attempt to execute "help" command if empty command
         if (msg_str == _config.BotTrigger) {
             Command help = FindCommand("help");
@@ -163,11 +169,6 @@ class CommandHandler {
                 await help.Exec(context, msg);
             return;
         }
-
-        //check formatting
-        String[] msg_array = msg.ToString().Split(' ');
-        if (msg_array[0] != _config.BotTrigger)
-            return;
 
         //look for command and execute if found
         Command command = FindCommand(msg_array[1]);

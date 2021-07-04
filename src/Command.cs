@@ -143,9 +143,13 @@ class Command {
 
         var messages_pages = context.Channel.GetMessagesAsync(msg, Direction.Before, del_num);
         var messages = await AsyncEnumerableExtensions.FlattenAsync<IMessage>(messages_pages);
+        
         var i = 0;
         foreach (var message in messages) {
             await context.Channel.DeleteMessageAsync(message);
+            
+            //don't send more than 1 request per second
+            await Task.Delay(1000);
             i += 1;
         }
         
