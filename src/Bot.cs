@@ -48,6 +48,7 @@ class Bot {
         _client.MessageReceived += HandleMessageAsync;
         _client.ReactionAdded += HandleReactionAddedAsync;
         _client.ReactionRemoved += HandleReactionRemovedAsync;
+        _client.UserJoined += HandleUserJoinedAsync;
 
         //get config
         _config = new Config();
@@ -225,6 +226,11 @@ class Bot {
         //send command context for message to command handler
         if (_commandhandler != null)
             _commandhandler.Execute(new SocketCommandContext(_client, msg), msg);
+    }
+
+    private async Task HandleUserJoinedAsync(SocketGuildUser user) {
+        //Console.WriteLine(user.Username);
+        return;
     }
 
     private Task Log(LogMessage log) {
