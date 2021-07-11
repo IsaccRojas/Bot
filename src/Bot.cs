@@ -26,6 +26,10 @@ class Config {
     public bool RoleEnabled { get; set; }
     public String RoleGuild { get; set; }
     public String RoleChannel { get; set; }
+    public bool WelcomeEnabled { get; set; }
+    public String WelcomeGuild { get; set; }
+    public String WelcomeChannel { get; set; }
+    public String WelcomeMessage { get; set; }
 }
 
 //main bot class
@@ -43,12 +47,6 @@ class Bot {
         //initialize and connect client
         _client = new DiscordSocketClient();
         _client.Log += Log;
-
-        //hook handlers to client events
-        _client.MessageReceived += HandleMessageAsync;
-        _client.ReactionAdded += HandleReactionAddedAsync;
-        _client.ReactionRemoved += HandleReactionRemovedAsync;
-        _client.UserJoined += HandleUserJoinedAsync;
 
         //get config
         _config = new Config();
@@ -94,8 +92,11 @@ class Bot {
             if (_commandhandler.LoadCommands() != 0) {
                 Console.WriteLine("WARN: could not initialize command handler.");
                 _commandhandler = null;
-            } else
+            } else {
+                //hook command handler to message received event
+                _client.MessageReceived += HandleMessageAsync;
                 Console.WriteLine("Command handler ready.");
+            }
         }
 
         //set up role handler
@@ -138,6 +139,10 @@ class Bot {
                     } else {
                         //give command handler reference to role handler's load method on success
                         _commandhandler.SetLoadRolesFn(_rolehandler.LoadRoles);
+                        
+                        //hook reaction handler to reaction events
+                        _client.ReactionAdded += HandleReactionAddedAsync;
+                        _client.ReactionRemoved += HandleReactionRemovedAsync;
                         Console.WriteLine("Role handler ready.");
                     }
                 }
