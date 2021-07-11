@@ -5,15 +5,15 @@ message listener. Reads data/commands.txt for user-defined custom commands.
 */
 
 using System;
-using System.Reflection;
-using System.Threading;
+//using System.Reflection;
+//using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Collections.Generic;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Discord.Rest;
+//using Discord.Rest;
 
 //child of command encapsulating custom information used for special execution
 class CustomCommand : Command {

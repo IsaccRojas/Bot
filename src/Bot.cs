@@ -5,18 +5,18 @@ listeners for incoming messages and reactions.
 */
 
 using System;
-using System.Reflection;
-using System.Threading;
+//using System.Reflection;
+//using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using System.Linq;
+//using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+//using System.Text.Json.Serialization;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
-using System.Collections.Generic;
+//using System.Collections.Generic;
 
 //bot config to be loaded with data/config.json
 class Config {
@@ -154,6 +154,11 @@ class Bot {
                 Console.WriteLine("WARN: retrieved 0 guilds from client.");
                 Console.WriteLine("WARN: could not initialize role handler.");
             }
+        }
+
+        //set up join handler
+        if (_config.WelcomeEnabled) {
+            //...
         }
 
         //delay infinitely
