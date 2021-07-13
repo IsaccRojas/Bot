@@ -29,12 +29,14 @@ class CustomCommand : Command {
 }
 
 //command handler class
-delegate Task<int> LoadRolesFn();
+delegate Task<int> LoadFn();
 class CommandHandler {
     private Config _config = null;
 
     //reference to bot's role handler's load function
-    private LoadRolesFn _loadrolesfn = null;
+    private LoadFn _loadrolesfn = null;
+    //reference to bot's join handler's load function
+    private LoadFn _loadjoinfn = null;
 
     private Command[] command_arr = null;
     private List<CustomCommand> customcommand_list = new List<CustomCommand>();
@@ -43,8 +45,12 @@ class CommandHandler {
         _config = config;
     }
 
-    public void SetLoadRolesFn(LoadRolesFn loadrolesfn) {
+    public void SetLoadRolesFn(LoadFn loadrolesfn) {
         _loadrolesfn = loadrolesfn;
+    }
+
+    public void SetLoadJoinFn(LoadFn loadjoinfn) {
+        _loadjoinfn = loadjoinfn;
     }
 
     public int LoadCommands() {
@@ -58,7 +64,8 @@ class CommandHandler {
                 new Command("ban", "Bans user.", "``" + _config.BotTrigger + " ban @[Username] [Optional: number of days to remove messages of from user, between 0-7]`` e.g. ``" + _config.BotTrigger + " ban @Bot 5``", true, Command.RoutineBan),
                 new Command("unban", "Unbans user", "``" + _config.BotTrigger + " unban @[Username]`` e.g. ``" + _config.BotTrigger + " unban @Bot``", true, Command.RoutineUnban),
                 new Command("reloadcommands", "Reloads command handler.", "``" + _config.BotTrigger + " reloadcommands``", true, RoutineReloadCommands),
-                new Command("reloadroles", "Reloads role handler.", "``" + _config.BotTrigger + " reloadroles``", true, RoutineReloadRoles)
+                new Command("reloadroles", "Reloads role handler.", "``" + _config.BotTrigger + " reloadroles``", true, RoutineReloadRoles),
+                new Command("reloadjoin", "Reloads join handler.", "``" + _config.BotTrigger + " reloadjoin``", true, RoutineReloadJoin)
             };
         }
 
@@ -290,6 +297,16 @@ class CommandHandler {
         if (_loadrolesfn == null ||(await _loadrolesfn()) != 0) {
             if (_loadrolesfn == null)
                 Console.WriteLine("ERROR: RoutineReloadRoles: _loadrolesfn() is null.");
+            await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
+        } else
+            await context.Channel.SendMessageAsync("Reload succeeded.");
+    }
+
+    //reload bot's join handler
+    private async Task RoutineReloadJoin(SocketCommandContext context, SocketUserMessage msg) {
+        if (_loadjoinfn == null ||(await _loadjoinfn()) != 0) {
+            if (_loadjoinfn == null)
+                Console.WriteLine("ERROR: RoutineReloadJoin: _loadjoinfn() is null.");
             await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
         } else
             await context.Channel.SendMessageAsync("Reload succeeded.");

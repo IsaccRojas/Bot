@@ -22,6 +22,8 @@ class JoinHandler {
     private SocketGuild _homeguild = null;
     private SocketTextChannel _homechannel = null;
 
+    private String _joinmessage = null;
+
     private List<IEmote> _emotes_list = new List<IEmote>();
 
     public JoinHandler(SocketGuild homeguild, SocketTextChannel homechannel) {
@@ -53,6 +55,22 @@ class JoinHandler {
         _homeguild = homeguild;
         _homechannel = homechannel;
     }
+
+    public async Task<int> LoadJoin() {
+        //load join message
+        try {
+            StreamReader fr = File.OpenText("data/joinmessage.txt");
+            if ((_joinmessage = fr.ReadToEnd()) == null) {
+                Console.WriteLine("WARN: unknown error attempting to read data/joinmessage.txt.");
+                return -1;
+            }
+        } catch (FileNotFoundException) {
+            Console.WriteLine("WARN: data/joinmessage.txt not found.");
+            return -1;
+        }
+
+        return 0;
+    }
     
     public ulong GetChannelId() {
         if (_homechannel != null)
@@ -62,5 +80,47 @@ class JoinHandler {
     }
 
     //send join message
-    public async Task ExecuteJoin() {}
+    public async Task ExecuteJoin(SocketGuildUser user) {
+        //delay before sending message
+        await Task.Delay(1000);
+
+        //emplace username into \0
+        String joinmessage = _joinmessage.Replace("\\0", user.Mention);
+
+        //emplace random guild emotes into \r's, if they exist
+        if (joinmessage.Contains("\\r")) {
+            var emotes = _homechannel.Guild.Emotes;
+
+            bool srch = false;
+            char c;
+            for (int i = 0; i < joinmessage.Length; i += 1) {
+                c = joinmessage[i];
+                if (srch) {
+                    if (c == 'r') {
+                        //remove \r
+                        joinmessage = joinmessage.Remove(i - 1, 2);
+
+                        //get random emote and place it into joinmessage
+                        Random rand = new Random();
+                        int j_rand = rand.Next(emotes.Count);
+                        int j = 0;
+                        foreach (IEmote emote in emotes) {
+                            if (j == j_rand) {
+                                joinmessage = joinmessage.Insert(i - 1, emote.ToString());
+                                i -= 2;
+                                break;
+                            }
+                            j += 1;
+                        }
+                    }
+                    srch = false;
+                }
+                if (c == '\\') {
+                    srch = true;
+                }
+            }
+        }
+
+        await _homechannel.SendMessageAsync(joinmessage);
+    }
 }

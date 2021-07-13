@@ -26,10 +26,9 @@ class Config {
     public bool RoleEnabled { get; set; }
     public String RoleGuild { get; set; }
     public String RoleChannel { get; set; }
-    public bool WelcomeEnabled { get; set; }
-    public String WelcomeGuild { get; set; }
-    public String WelcomeChannel { get; set; }
-    public String WelcomeMessage { get; set; }
+    public bool JoinEnabled { get; set; }
+    public String JoinGuild { get; set; }
+    public String JoinChannel { get; set; }
 }
 
 //main bot class
@@ -37,6 +36,7 @@ class Bot {
     private DiscordSocketClient _client = null;
     private CommandHandler _commandhandler = null;
     private RoleHandler _rolehandler = null;
+    private JoinHandler _joinhandler = null;
     private Config _config = null;
     
     //use asynchronous main
@@ -103,6 +103,7 @@ class Bot {
         if (_config.RoleEnabled) {
             SocketGuild foundguild = null;
             SocketTextChannel foundchannel = null;
+
             //try to get guilds from client 3 times
             var guilds = _client.Guilds;
             int i = 0;
@@ -112,6 +113,7 @@ class Bot {
                 guilds = _client.Guilds;
                 i += 1;
             }
+
             if (guilds.Count > 0) {
                 //find guild in config
                 foreach (SocketGuild guild in guilds) {
@@ -147,18 +149,70 @@ class Bot {
                     }
                 }
                 else {
-                    Console.WriteLine("WARN: config.json: could not find guild or channel specified in configuration. Either they do not exist, or client did not connect within 5 seconds.");
+                    Console.WriteLine("WARN: config.json: could not find guild or channel specified in configuration for role handler. Either they do not exist, or client did not connect within 5 seconds.");
                     Console.WriteLine("WARN: could not initialize role handler.");
                 }
             } else {
-                Console.WriteLine("WARN: retrieved 0 guilds from client.");
+                Console.WriteLine("WARN: retrieved 0 guilds from client while trying to initialize role handler.");
                 Console.WriteLine("WARN: could not initialize role handler.");
             }
         }
 
         //set up join handler
-        if (_config.WelcomeEnabled) {
-            //...
+        if (_config.JoinEnabled) {
+            SocketGuild foundguild = null;
+            SocketTextChannel foundchannel = null;
+
+            //try to get guilds from client 3 times
+            var guilds = _client.Guilds;
+            int i = 0;
+            while (guilds.Count <= 0 && i < 2) {
+                Console.WriteLine("WARN: retrieved 0 guilds from client. Retrying in 4 seconds.");
+                await Task.Delay(4000);
+                guilds = _client.Guilds;
+                i += 1;
+            }
+
+            if (guilds.Count > 0) {
+                //find guild in config
+                foreach (SocketGuild guild in guilds) {
+                    if (guild.Name == _config.JoinGuild) {
+                        foundguild = guild;
+                        break;
+                    }
+                }
+                if (foundguild != null) {
+                    //find channel in config
+                    var channels = foundguild.TextChannels;
+                    foreach(SocketTextChannel channel in channels) {
+                        if (channel.Name == _config.JoinChannel) {
+                            foundchannel = channel;
+                            break;
+                        }
+                    }
+                }
+                //try to initialize join handler
+                if (foundguild != null && foundchannel != null) {
+                    _joinhandler = new JoinHandler(foundguild, foundchannel);
+                    if ((await _joinhandler.LoadJoin()) != 0) {
+                        Console.WriteLine("WARN: could not initialize join handler.");
+                        _joinhandler = null;
+                    } else {
+                        //give command handler reference to join handler's load method on success
+                        _commandhandler.SetLoadJoinFn(_joinhandler.LoadJoin);
+
+                        //hook reaction handler to join event
+                        _client.UserJoined += HandleUserJoinedAsync;
+                        Console.WriteLine("Join handler ready.");
+                    }
+                } else {
+                    Console.WriteLine("WARN: config.json: could not find guild or channel specified in configuration for join handler. Either they do not exist, or client did not connect within 5 seconds.");
+                    Console.WriteLine("WARN: could not initialize join handler.");
+                }
+            } else {
+                Console.WriteLine("WARN: retrieved 0 guilds from client while trying to initialize join handler.");
+                Console.WriteLine("WARN: could not initialize join handler.");
+            }
         }
 
         //delay infinitely
@@ -239,7 +293,14 @@ class Bot {
     }
 
     private async Task HandleUserJoinedAsync(SocketGuildUser user) {
-        //Console.WriteLine(user.Username);
+        if (_joinhandler == null)
+            return;
+
+        //check if joining user is not self or other bot
+        if (user.Id == _client.CurrentUser.Id || user.IsBot)
+            return;
+        
+        await _joinhandler.ExecuteJoin(user);
         return;
     }
 
