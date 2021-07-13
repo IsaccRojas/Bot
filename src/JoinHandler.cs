@@ -5,15 +5,11 @@ text message from data/joinmessage.txt.
 */
 
 using System;
-//using System.Reflection;
-//using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Collections.Generic;
-//using System.Text;
 using Discord;
 using Discord.WebSocket;
-using Discord.Rest;
 
 //join handler class
 class JoinHandler {

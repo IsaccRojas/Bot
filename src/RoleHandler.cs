@@ -6,12 +6,9 @@ default emotes from data/emotes.csv, and roles to be accessible from this
 */
 
 using System;
-//using System.Reflection;
-//using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Collections.Generic;
-//using System.Text;
 using Discord;
 using Discord.WebSocket;
 using Discord.Rest;

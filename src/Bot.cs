@@ -5,18 +5,12 @@ listeners for incoming messages and reactions.
 */
 
 using System;
-//using System.Reflection;
-//using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-//using System.Linq;
 using System.Text.Json;
-//using System.Text.Json.Serialization;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-
-//using System.Collections.Generic;
 
 //bot config to be loaded with data/config.json
 class Config {
