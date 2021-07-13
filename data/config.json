@@ -4,5 +4,8 @@
 	"CommandEnabled":false,
 	"RoleEnabled":false,
 	"RoleGuild":"",
-	"RoleChannel":""
+	"RoleChannel":"",
+	"JoinEnabled":false,
+	"JoinGuild":"",
+	"JoinChannel":""
 }
