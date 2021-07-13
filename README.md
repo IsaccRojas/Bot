@@ -13,6 +13,9 @@ The configuration is specified by the `data/config.json` file, and has the follo
 - `RoleEnabled`: true/false value for if role assignment functionality should be enabled.
 - `RoleGuild`: Name of guild (Discord server) the role assignment message will be created in (if RoleEnabled is true).
 - `RoleChannel`: Name of channel within guild the role assignment message will be created in (if RoleEnabled is true).
+- `JoinEnabled`: true/false value for if messages on user join should be enabled.
+- `JoinGuild`: Name of guild (Discord server) the join message will be sent in (if JoinEnabled is true).
+- `JoinChannel`: Name of channel within guild the join message will be sent in (if JoinEnabled is true).
 
 ## Usage
 
@@ -49,9 +52,9 @@ which can then be used as
 
 ![Custom command example.](https://i.imgur.com/qZhsXpD.png)
 
-The text field uses a `\[digit]` formatting, that allows you to specify a number between 0-9
-in which parameters to the command will be emplaced. `\1` refers to the 1st parameter, `\2`
-refers to the 2nd parameter, etc. `\0` refers to user of the command.
+The text field uses a `\[digit]` escape sequence formatting, that allows you to specify a number 
+between 0-9 in which parameters to the command will be emplaced. `\1` refers to the 1st 
+parameter, `\2` refers to the 2nd parameter, etc. `\0` refers to user of the command.
 
 Multiple images can be specified by separating them with commas, and one will be randomly
 selected, e.g.:
@@ -93,6 +96,21 @@ listed emotes and receive their corresponding role, and remove the reaction to h
 
 **Note:** this system uses the `data/emotes.csv` file to get a list of all standard Unicode
 emotes. This may be outdated past the time of this writing. Last update: 2:44 P.M. CST 2/23/2021
+
+### User Join Messages
+
+The bot can send a "join message" in a specific guild and channel when a user joins said guild, which
+is loaded from the `data/joinmessage.txt` file.
+
+The text loaded from `data/joinmessage.txt` can use an escape sequence formatting similar to the one 
+used for custom commands, where `\0` will replaced by the joining user. It also supports printing a
+random guild-specific emote with `\r`, e.g.:
+
+	\r Welcome, \0! \r
+	
+which will print as follows when a user joins the server:
+
+![Join message example.](https://i.imgur.com/cqwUuIR.png)
 
 ### Additional Notes
 
