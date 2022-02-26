@@ -42,11 +42,11 @@ Custom embed message commands can be created via the `data/commands.txt` file. E
 will specify a new custom command, which can be loaded on startup and reloaded via the
 built-in `reloadcommands` command. Custom commands have the following syntax:
 
->[command name];[text];[image URL(s)];[admin]
+>[command name];[text];[image URL(s)];[embed];[admin]
 
 e.g.
 
-	hi;Hi, \1!;https://www.website.com/wave.png;false
+	hi;Hi, \1!;https://www.website.com/wave.png;true;false
 
 which can then be used as
 
@@ -59,16 +59,20 @@ parameter, `\2` refers to the 2nd parameter, etc. `\0` refers to user of the com
 Multiple images can be specified by separating them with commas, and one will be randomly
 selected, e.g.:
 
-	hi;Hi, \1!;https://www.website.com/wave1.png,https://www.website.com/wave2.png;false
+	hi;Hi, \1!;https://www.website.com/wave1.png,https://www.website.com/wave2.png;true;false
 
-Text, images, and administrator privileges are optional (defaults to true). The following examples are valid:
+Text, images, the embed flag and administrator privileges are optional. The embed flag defaults
+to false, and the administrator privilege defaults to true. Note that if the custom command
+is not an embed, then it will not use any images even if they are specified. The following 
+examples are valid:
 
-	blank;;;false
-	blankadmin;;;
-	textonly;Here's some text.;;false
-	textonlyadmin;Here's some text, only for admins.;;true
-	twoimages;;https://www.website.com/wave1.png,https://www.website.com/wave2.png;false
-	oneimageadmin;;https://www.website.com/wave1.png;
+	blank;;;;false
+	blankadmin;;;;
+	textonly;Here's some text.;;false;false
+	textembed;Here's some text in an embed.;;true;false
+	textonlyadmin;Here's some text, only for admins.;;false;true
+	twoimages;;https://www.website.com/wave1.png,https://www.website.com/wave2.png;true;false
+	oneimageadmin;;https://www.website.com/wave1.png;true;
 
 ### Role Assignment
 

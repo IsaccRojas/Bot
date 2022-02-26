@@ -17,11 +17,13 @@ class CustomCommand : Command {
     public String Text { get; }
     public int NumParams { get; }
     public String[] Imgs { get; }
+    public bool Embed { get; }
 
-    public CustomCommand(String commandname, String commanddesc, String commandsyntax, String text, int num_params, String[] images, bool admin) : base(commandname, commanddesc, commandsyntax, admin, null) {
+    public CustomCommand(String commandname, String commanddesc, String commandsyntax, String text, int num_params, String[] images, bool embed, bool admin) : base(commandname, commanddesc, commandsyntax, admin, null) {
         Text = text;
         NumParams = num_params;
         Imgs = images;
+        Embed = embed;
     }
 }
 
@@ -78,7 +80,7 @@ class CommandHandler {
                 String[] line_arr = line.Split(';');
                 
                 //ensure right size
-                if (line_arr.Length != 4) {
+                if (line_arr.Length != 5) {
                     Console.WriteLine("WARN: data/commands.txt: invalid number of semi-colon separated items (line " + i + ").");
                     i += 1;
                     continue;
@@ -88,8 +90,13 @@ class CommandHandler {
                 String name = line_arr[0];
                 String text = line_arr[1];
                 String[] img_arr = line_arr[2].Split(',');
+
+                bool embed = false;
+                if (!(Boolean.TryParse(line_arr[3], out embed)))
+                    embed = false;
+
                 bool admin = true;
-                if (!(Boolean.TryParse(line_arr[3], out admin)))
+                if (!(Boolean.TryParse(line_arr[4], out admin)))
                     admin = true;
                 
                 if (name == "") {
@@ -125,6 +132,7 @@ class CommandHandler {
                         text,
                         num_params,
                         img_arr,
+                        embed,
                         admin
                     )
                 );
@@ -137,7 +145,7 @@ class CommandHandler {
             File.CreateText("data/commands.txt");
         }
         if (customcommand_list_tmp.Count == 0)
-            Console.WriteLine("WARN: data/commands.txt: could not find any valid 'name;text' or 'name;text;imgs' triplets.");
+            Console.WriteLine("WARN: data/commands.txt: could not find any valid custom commands.");
         else
             Console.WriteLine("LoadCommands(): " + customcommand_list_tmp.Count + " custom commands found.");
         
@@ -230,17 +238,20 @@ class CommandHandler {
             text = text.Replace("\\" + (i - 1).ToString(), msg_array[i]);
         }
         
-        //create embed
-        var embed = new EmbedBuilder();
-        embed.WithDescription(text);
-        try {
-            var rand = new Random();
-            embed.WithImageUrl(customcommand.Imgs[rand.Next(customcommand.Imgs.Length)]);
-        } catch {
-            Console.WriteLine("WARN: CustomExecute(): invalid URL.");
-        }
+        if (customcommand.Embed) {
+            //create embed
+            var embed = new EmbedBuilder();
+            embed.WithDescription(text);
+            try {
+                var rand = new Random();
+                embed.WithImageUrl(customcommand.Imgs[rand.Next(customcommand.Imgs.Length)]);
+            } catch {
+                Console.WriteLine("WARN: CustomExecute(): invalid URL.");
+            }
 
-        await context.Channel.SendMessageAsync(embed: embed.Build());
+            await context.Channel.SendMessageAsync(embed: embed.Build());
+        } else
+            await context.Channel.SendMessageAsync(text);
     }
 
     /* built-in command methods */
