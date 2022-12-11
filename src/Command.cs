@@ -51,13 +51,14 @@ class CommandException : Exception {
 }
 
 //class encapsulating command information
-delegate Task CommandRoutine(SocketCommandContext context, SocketUserMessage msg);
+delegate Task CommandRoutine(SocketCommandContext context, SocketUserMessage msg, RequestOptions options);
 class Command {
     public String Name { get; }
     public String Description { get; }
     public String Syntax { get; }
     public bool Admin { get; }
     protected CommandRoutine _commandroutine;
+    public static RateLimiter limiter = null;
 
     public Command(String commandname, String commanddesc, String commandsyntax, bool admin, CommandRoutine commandroutine = null) {
         Name = commandname;
@@ -67,9 +68,9 @@ class Command {
         _commandroutine = commandroutine;
     }
 
-    public Task Exec(SocketCommandContext context, SocketUserMessage msg) {
+    public Task Exec(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         if (_commandroutine != null)
-            return _commandroutine(context, msg);
+            return _commandroutine(context, msg, options);
         else
             return Task.Delay(0);
     }
@@ -77,7 +78,7 @@ class Command {
     /* built-in command methods */
 
     //spawn "poll"-formatted message
-    public static async Task RoutinePoll(SocketCommandContext context, SocketUserMessage msg) {
+    public static async Task RoutinePoll(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         //get message elements
         String[] msg_array = msg.ToString().Split(' ');
         if (msg_array.Length < 4) {
@@ -102,32 +103,44 @@ class Command {
         }
 
         //begin building embed using last element of msg_array as image url
-        var embed = new EmbedBuilder{ Title = quotes[0] };
+        //we build two embeds because there is no elegant copy/clone solution: one with the image URL, and one without it
+        var embedbuilder_img = new EmbedBuilder{ Title = quotes[0] };
+        var embedbuilder = new EmbedBuilder{ Title = quotes[0] };
         String desc = new String("");
         for (int i = 1; i < quotes.Count && i < 26; i += 1)
             desc += Util.GetUnicodeLetterI(i - 1) + " **" + quotes[i] + "**\n";
-        embed.WithDescription(desc);
+        embedbuilder_img.WithDescription(desc);
+        embedbuilder_img.WithFooter("React with the corresponding emote to vote.");
+        embedbuilder.WithDescription(desc);
+        embedbuilder.WithFooter("React with the corresponding emote to vote.");
         
+        //try building with image URL; omit image URL if failure
+        Embed embed;
         try {
-            embed.WithImageUrl(msg_array[msg_array.Length - 1]);
+            embedbuilder.WithImageUrl(msg_array[msg_array.Length - 1]);
+            embed = embedbuilder_img.Build();
         } catch {
             Console.WriteLine("WARN: _poll(): invalid URL.");
+            embed = embedbuilder.Build();
         }
-        embed.WithFooter("React with the corresponding emote to vote.");
 
         //send message
-        var pollmsg = (RestUserMessage)(await context.Channel.SendMessageAsync(embed: embed.Build()));
+        var pollmsg = (RestUserMessage)(await context.Channel.SendMessageAsync(embed: embed));
+        await limiter.Check();
 
         //add initial reactions
-        for (int i = 1; i < quotes.Count && i < 26; i += 1)
-            await pollmsg.AddReactionAsync(new Emoji(Util.GetUnicodeLetterI(i - 1)));
+        for (int i = 1; i < quotes.Count && i < 26; i += 1) {
+            await pollmsg.AddReactionAsync(new Emoji(Util.GetUnicodeLetterI(i - 1)), options: options);
+            await limiter.Check();
+        }
 
         //delete message that invoked command
-        await context.Channel.DeleteMessageAsync(msg);
+        await context.Channel.DeleteMessageAsync(msg, options: options);
+        await limiter.Check();
     }
 
     //delete number of messages
-    public static async Task RoutineDelete(SocketCommandContext context, SocketUserMessage msg) {
+    public static async Task RoutineDelete(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         //get number of messages to delete
         int del_num = 0;
         String[] msg_array = msg.ToString().Split(' ');
@@ -139,23 +152,23 @@ class Command {
             throw new CommandException("invalid number of messages");
         }
 
-        var messages_pages = context.Channel.GetMessagesAsync(msg, Direction.Before, del_num);
+        var messages_pages = context.Channel.GetMessagesAsync(msg, Direction.Before, del_num, options: options);
+        await limiter.Check();
         var messages = await AsyncEnumerableExtensions.FlattenAsync<IMessage>(messages_pages);
         
         var i = 0;
         foreach (var message in messages) {
-            await context.Channel.DeleteMessageAsync(message);
-            
-            //don't send more than 1 request per second
-            await Task.Delay(1000);
+            await context.Channel.DeleteMessageAsync(message, options: options);
+            await limiter.Check();
             i += 1;
         }
         
-        await context.Channel.SendMessageAsync(i.ToString() + " message(s) deleted.");
+        await context.Channel.SendMessageAsync(i.ToString() + " message(s) deleted.", options: options);
+        await limiter.Check();
     }
 
     //kick user
-    public static async Task RoutineKick(SocketCommandContext context, SocketUserMessage msg) {
+    public static async Task RoutineKick(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         //determine if correct number of parameters
         String[] msg_array = msg.ToString().Split(' ');
         if (msg_array.Length < 3) {
@@ -169,11 +182,12 @@ class Command {
 
         //kick user
         await context.Guild.GetUser(id).KickAsync(reason: "Bot command");
-        await context.Channel.SendMessageAsync("User kicked.");
+        await context.Channel.SendMessageAsync("User kicked.", options: options);
+        await limiter.Check();
     }
 
     //ban user
-    public static async Task RoutineBan(SocketCommandContext context, SocketUserMessage msg) {
+    public static async Task RoutineBan(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         //determine if correct number of parameters
         String[] msg_array = msg.ToString().Split(' ');
         if (msg_array.Length < 3) {
@@ -190,20 +204,24 @@ class Command {
             int days = 0;
             if (int.TryParse(msg_array[3], out days) && days >= 0 && days <= 7) {
                 //ban user and delete number of days worth of message history
-                await context.Guild.AddBanAsync(userId: id, pruneDays: days, reason: "Bot command");
-                await context.Channel.SendMessageAsync("User banned, deleted " + msg_array[3] + " days of their message history.");
+                await context.Guild.AddBanAsync(userId: id, pruneDays: days, reason: "Bot command", options: options);
+                await limiter.Check();
+                await context.Channel.SendMessageAsync("User banned, deleted " + msg_array[3] + " days of their message history.", options: options);
+                await limiter.Check();
             } else {
                 throw new CommandException("invalid number of days");
             }
         } else {
             //ban user with default number of days (0)
-            await context.Guild.AddBanAsync(userId: id, reason: "Bot command");
-            await context.Channel.SendMessageAsync("User banned.");
+            await context.Guild.AddBanAsync(userId: id, reason: "Bot command", options: options);
+            await limiter.Check();
+            await context.Channel.SendMessageAsync("User banned.", options: options);
+            await limiter.Check();
         }
     }
 
     //unban user
-    public static async Task RoutineUnban(SocketCommandContext context, SocketUserMessage msg) {
+    public static async Task RoutineUnban(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         //determine if correct number of parameters
         String[] msg_array = msg.ToString().Split(' ');
         if (msg_array.Length < 3)
@@ -216,7 +234,9 @@ class Command {
             throw new CommandException("invalid user");
 
         //unban user
-        await context.Guild.RemoveBanAsync(userId: id);
-        await context.Channel.SendMessageAsync("User unbanned.");
+        await context.Guild.RemoveBanAsync(userId: id, options: options);
+        await limiter.Check();
+        await context.Channel.SendMessageAsync("User unbanned.", options: options);
+        await limiter.Check();
     }
 }

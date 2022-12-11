@@ -30,6 +30,7 @@ class CustomCommand : Command {
 //command handler class
 delegate Task<int> LoadFn();
 class CommandHandler {
+    public static RateLimiter limiter = null;
     private Config _config = null;
 
     //reference to bot's role handler's load function
@@ -166,7 +167,7 @@ class CommandHandler {
     }
     
     //attempt to run given command message
-    public async Task Execute(SocketCommandContext context, SocketUserMessage msg) {
+    public async Task Execute(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         String msg_str = msg.ToString();
 
         //check formatting
@@ -178,7 +179,7 @@ class CommandHandler {
         if (msg_str == _config.BotTrigger) {
             Command help = FindCommand("help");
             if (help != null)
-                await help.Exec(context, msg);
+                await help.Exec(context, msg, options);
             return;
         }
 
@@ -191,19 +192,21 @@ class CommandHandler {
                 if (command.Admin) {
                     var user = context.Guild.GetUser(msg.Author.Id);
                     if (!(user.GuildPermissions.Administrator)) {
-                        await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.");
+                        await context.Channel.SendMessageAsync("Insufficient permissions to execute this command.", options: options);
+                        await limiter.Check();
                         return;
                     }
                 }
 
                 if (command is CustomCommand) {
-                    await CustomExecute((CustomCommand)(command), context, msg);
+                    await CustomExecute((CustomCommand)(command), context, msg, options);
                 } else {
-                    await command.Exec(context, msg);
+                    await command.Exec(context, msg, options);
                 }
 
             } else {
-                    await context.Channel.SendMessageAsync("Command not found. Please use ``" + _config.BotTrigger + "`` or ``" + _config.BotTrigger + " help`` to see a list of commands.");
+                    await context.Channel.SendMessageAsync("Command not found. Please use ``" + _config.BotTrigger + "`` or ``" + _config.BotTrigger + " help`` to see a list of commands.", options: options);
+                    await limiter.Check();
             }
 
         } catch (Exception e) {
@@ -218,12 +221,13 @@ class CommandHandler {
                 throw;
             }
             err_msg += e.Message + ". Syntax: " + command.Syntax;
-            await context.Channel.SendMessageAsync(err_msg);
+            await context.Channel.SendMessageAsync(err_msg, options: options);
+            await limiter.Check();
         }
     }
 
     //attempt to run given custom command
-    public async Task CustomExecute(CustomCommand customcommand, SocketCommandContext context, SocketUserMessage msg) {
+    public async Task CustomExecute(CustomCommand customcommand, SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         String[] msg_array = msg.ToString().Split(' ');
 
         if (msg_array.Length - 2 != customcommand.NumParams) {
@@ -249,18 +253,22 @@ class CommandHandler {
                 Console.WriteLine("WARN: CustomExecute(): invalid URL.");
             }
 
-            await context.Channel.SendMessageAsync(embed: embed.Build());
-        } else
-            await context.Channel.SendMessageAsync(text);
+            await context.Channel.SendMessageAsync(embed: embed.Build(), options: options);
+            await limiter.Check();
+        } else {
+            await context.Channel.SendMessageAsync(text, options: options);
+            await limiter.Check();
+        }
     }
 
     /* built-in command methods */
 
     //get list of available commands
-    private async Task RoutineHelp(SocketCommandContext context, SocketUserMessage msg) {
+    private async Task RoutineHelp(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         var user = context.Guild.GetUser(msg.Author.Id);
         if (user == null) {
-            await context.Channel.SendMessageAsync("User is invalid. Could not send DM.");
+            await context.Channel.SendMessageAsync("User is invalid. Could not send DM.", options: options);
+            await limiter.Check();
             return;
         }
 
@@ -288,35 +296,46 @@ class CommandHandler {
         }
         
         //send DM
-        await user.SendMessageAsync(help_str);
-        await context.Channel.SendMessageAsync("DM sent.");
+        await user.SendMessageAsync(help_str, options: options);
+        await limiter.Check();
+        await context.Channel.SendMessageAsync("DM sent.", options: options);
+        await limiter.Check();
     }
 
     //reload bot's (this) command handler
-    private async Task RoutineReloadCommands(SocketCommandContext context, SocketUserMessage msg) {
-        if (LoadCommands() != 0)
-            await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
-        else
-            await context.Channel.SendMessageAsync("Reload succeeded.");
+    private async Task RoutineReloadCommands(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
+        if (LoadCommands() != 0) {
+            await context.Channel.SendMessageAsync("Reload failed. See console output for details.", options: options);
+            await limiter.Check();
+        } else {
+            await context.Channel.SendMessageAsync("Reload succeeded.", options: options);
+            await limiter.Check();
+        }
     }
 
     //reload bot's role handler
-    private async Task RoutineReloadRoles(SocketCommandContext context, SocketUserMessage msg) {
+    private async Task RoutineReloadRoles(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         if (_loadrolesfn == null ||(await _loadrolesfn()) != 0) {
             if (_loadrolesfn == null)
                 Console.WriteLine("ERROR: RoutineReloadRoles: _loadrolesfn() is null.");
-            await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
-        } else
-            await context.Channel.SendMessageAsync("Reload succeeded.");
+            await context.Channel.SendMessageAsync("Reload failed. See console output for details.", options: options);
+            await limiter.Check();
+        } else {
+            await context.Channel.SendMessageAsync("Reload succeeded.", options: options);
+            await limiter.Check();
+        }
     }
 
     //reload bot's join handler
-    private async Task RoutineReloadJoin(SocketCommandContext context, SocketUserMessage msg) {
+    private async Task RoutineReloadJoin(SocketCommandContext context, SocketUserMessage msg, RequestOptions options) {
         if (_loadjoinfn == null ||(await _loadjoinfn()) != 0) {
             if (_loadjoinfn == null)
                 Console.WriteLine("ERROR: RoutineReloadJoin: _loadjoinfn() is null.");
-            await context.Channel.SendMessageAsync("Reload failed. See console output for details.");
-        } else
-            await context.Channel.SendMessageAsync("Reload succeeded.");
+            await context.Channel.SendMessageAsync("Reload failed. See console output for details.", options: options);
+            await limiter.Check();
+        } else {
+            await context.Channel.SendMessageAsync("Reload succeeded.", options: options);
+            await limiter.Check();
+        }
     }
 }

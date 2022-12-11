@@ -11,6 +11,7 @@ using System.Text.Json;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using System.Collections.Generic;
 
 //bot config to be loaded with data/config.json
 class Config {
@@ -25,6 +26,36 @@ class Config {
     public String JoinChannel { get; set; }
 }
 
+class RateLimiter {
+    private Dictionary<string, IRateLimitInfo> infos;
+
+    public RateLimiter() {
+        infos = new Dictionary<string, IRateLimitInfo>();
+    }
+
+    public void Update(IRateLimitInfo info) {
+        if (!infos.ContainsKey(info.Bucket))
+            infos.Add(info.Bucket, info);
+        else
+            infos[info.Bucket] = info;
+    }
+
+    //if no more requests can be made, stall for resettime amount of time
+    public async Task Check() {
+        foreach (KeyValuePair<string, IRateLimitInfo> pairs in infos) {
+            //check if needed fields are null
+            var remaining = pairs.Value.Remaining;
+            var resettime = pairs.Value.ResetAfter;
+            if (remaining.HasValue && resettime.HasValue) {
+                if (remaining.Value <= 0) {
+                    Console.WriteLine("Request rate limit reached. Stalling for " + ((int)Math.Ceiling(resettime.Value.TotalMilliseconds) + 1).ToString() + " milliseconds.");
+                    await Task.Delay((int)Math.Ceiling(resettime.Value.TotalMilliseconds) + 1);
+                }
+            }
+        }
+    }
+};
+
 //main bot class
 class Bot {
     private DiscordSocketClient _client = null;
@@ -32,14 +63,28 @@ class Bot {
     private RoleHandler _rolehandler = null;
     private JoinHandler _joinhandler = null;
     private Config _config = null;
+    private RateLimiter _limiter = null;
+    public RequestOptions _globaloptions = null;
     
     //use asynchronous main
     static void Main(string[] args)
         => new Bot().MainAsync().GetAwaiter().GetResult();
 
     public async Task MainAsync() {
+        _limiter = new RateLimiter();
+        Command.limiter = _limiter;
+        CommandHandler.limiter = _limiter;
+        RoleHandler.limiter = _limiter;
+        JoinHandler.limiter = _limiter;
+
         //initialize and connect client
-        _client = new DiscordSocketClient();
+        var clientconfig = new DiscordSocketConfig() {
+            GatewayIntents = GatewayIntents.DirectMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.GuildBans
+                           | GatewayIntents.GuildEmojis | GatewayIntents.GuildIntegrations | GatewayIntents.GuildMembers 
+                           | GatewayIntents.GuildMessageReactions | GatewayIntents.GuildMessages | GatewayIntents.Guilds 
+                           | GatewayIntents.MessageContent | GatewayIntents.GuildWebhooks
+        };
+        _client = new DiscordSocketClient(clientconfig);
         _client.Log += Log;
 
         //get config
@@ -79,6 +124,11 @@ class Bot {
         await _client.StartAsync();
         if (_config.CommandEnabled || _config.RoleEnabled)
             await Task.Delay(4000);
+
+        //initialize global message options
+        _globaloptions = new RequestOptions() {
+            RatelimitCallback = RateLimitCallbackFunction
+        };
 
         //set up command handler
         if (_config.CommandEnabled) {
@@ -128,7 +178,7 @@ class Bot {
                 }
                 //try to initialize role handler
                 if (foundguild != null && foundchannel != null) {
-                    _rolehandler = new RoleHandler(foundguild, foundchannel);
+                    _rolehandler = new RoleHandler(foundguild, foundchannel, _globaloptions);
                     if ((await _rolehandler.LoadRoles()) != 0) {
                         Console.WriteLine("WARN: could not initialize role handler.");
                         _rolehandler = null;
@@ -187,7 +237,7 @@ class Bot {
                 }
                 //try to initialize join handler
                 if (foundguild != null && foundchannel != null) {
-                    _joinhandler = new JoinHandler(foundguild, foundchannel);
+                    _joinhandler = new JoinHandler(foundguild, foundchannel, _globaloptions);
                     if ((await _joinhandler.LoadJoin()) != 0) {
                         Console.WriteLine("WARN: could not initialize join handler.");
                         _joinhandler = null;
@@ -213,11 +263,12 @@ class Bot {
         await Task.Delay(-1);
     }
 
-    private async Task HandleReactionAddedAsync(Cacheable<IUserMessage, ulong> cachemessage, ISocketMessageChannel channel, SocketReaction reaction) {
+    private async Task HandleReactionAddedAsync(Cacheable<IUserMessage, ulong> cachemessage, Cacheable<IMessageChannel, ulong> cachechannel, SocketReaction reaction) {
         if (_rolehandler == null)
             return;
         
-        //check if channel is role channel
+        //get channel and check if it is role channel
+        IMessageChannel channel = await cachechannel.GetOrDownloadAsync();
         if (channel.Id != _rolehandler.GetChannelId())
             return;
 
@@ -240,11 +291,12 @@ class Bot {
         await _rolehandler.ExecuteReactionAdded(reaction);
     }
     
-    private async Task HandleReactionRemovedAsync(Cacheable<IUserMessage, ulong> cachemessage, ISocketMessageChannel channel, SocketReaction reaction) {
+    private async Task HandleReactionRemovedAsync(Cacheable<IUserMessage, ulong> cachemessage, Cacheable<IMessageChannel, ulong> cachechannel, SocketReaction reaction) {
         if (_rolehandler == null)
             return;
 
-        //check if channel is role channel
+        //get channel and check if it is role channel
+        IMessageChannel channel = await cachechannel.GetOrDownloadAsync();
         if (channel.Id != _rolehandler.GetChannelId())
             return;
 
@@ -283,7 +335,7 @@ class Bot {
 
         //send command context for message to command handler
         if (_commandhandler != null)
-            _commandhandler.Execute(new SocketCommandContext(_client, msg), msg);
+            _commandhandler.Execute(new SocketCommandContext(_client, msg), msg, _globaloptions);
     }
 
     private async Task HandleUserJoinedAsync(SocketGuildUser user) {
@@ -296,6 +348,10 @@ class Bot {
         
         await _joinhandler.ExecuteJoin(user);
         return;
+    }
+
+    private async Task RateLimitCallbackFunction(IRateLimitInfo info) {
+        _limiter.Update(info);
     }
 
     private Task Log(LogMessage log) {

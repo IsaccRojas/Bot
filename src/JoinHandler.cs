@@ -14,6 +14,7 @@ using Discord.WebSocket;
 //join handler class
 class JoinHandler {
     private static List<StandardEmote> _standardemotes_list = null;
+    public static RateLimiter limiter = null;
 
     private SocketGuild _homeguild = null;
     private SocketTextChannel _homechannel = null;
@@ -22,7 +23,9 @@ class JoinHandler {
 
     private List<IEmote> _emotes_list = new List<IEmote>();
 
-    public JoinHandler(SocketGuild homeguild, SocketTextChannel homechannel) {
+    private RequestOptions _options = null;
+
+    public JoinHandler(SocketGuild homeguild, SocketTextChannel homechannel, RequestOptions options) {
         //load standard emotes from .csv
         if (_standardemotes_list == null) {
             _standardemotes_list = new List<StandardEmote>();
@@ -50,6 +53,7 @@ class JoinHandler {
 
         _homeguild = homeguild;
         _homechannel = homechannel;
+        _options = options;
     }
 
     public async Task<int> LoadJoin() {
@@ -77,9 +81,6 @@ class JoinHandler {
 
     //send join message
     public async Task ExecuteJoin(SocketGuildUser user) {
-        //delay before sending message
-        await Task.Delay(1000);
-
         //emplace username into \0
         String joinmessage = _joinmessage.Replace("\\0", user.Mention);
 
@@ -117,6 +118,7 @@ class JoinHandler {
             }
         }
 
-        await _homechannel.SendMessageAsync(joinmessage);
+        await _homechannel.SendMessageAsync(joinmessage, options: _options);
+        await limiter.Check();
     }
 }

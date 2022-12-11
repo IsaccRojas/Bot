@@ -26,6 +26,7 @@ class StandardEmote {
 //role handler class
 class RoleHandler {
     private static List<StandardEmote> _standardemotes_list = null;
+    public static RateLimiter limiter = null;
 
     private EmbedBuilder embed = null;
 
@@ -36,7 +37,9 @@ class RoleHandler {
     private List<IRole> _roles_list = new List<IRole>();
     private List<IEmote> _emotes_list = new List<IEmote>();
 
-    public RoleHandler(SocketGuild homeguild, SocketTextChannel homechannel) {
+    private RequestOptions _options = null;
+
+    public RoleHandler(SocketGuild homeguild, SocketTextChannel homechannel, RequestOptions options) {
         //load standard emotes from .csv
         if (_standardemotes_list == null) {
             _standardemotes_list = new List<StandardEmote>();
@@ -64,6 +67,7 @@ class RoleHandler {
 
         _homeguild = homeguild;
         _homechannel = homechannel;
+        _options = options;
     }
 
     public ulong GetMessageId() {
@@ -172,7 +176,8 @@ class RoleHandler {
         //get message from retrieved id
         RestUserMessage message = null;
         if (id > 0) {
-            message = (RestUserMessage)(await _homechannel.GetMessageAsync(id));
+            message = (RestUserMessage)(await _homechannel.GetMessageAsync(id, options: _options));
+            await limiter.Check();
             if (message == null)
                  Console.WriteLine("WARN: data/rolesdata.bin: id is not valid. Creating new message.");
         }
@@ -186,23 +191,26 @@ class RoleHandler {
 
         if (message != null) {
             //modify message and store
-            await message.ModifyAsync(x => x.Embed = embed.Build());
+            await message.ModifyAsync(x => x.Embed = embed.Build(), options: _options);
+            await limiter.Check();
             _message = message;
 
             //add new reactions
             for (int i = 0; i < _emotes_list_tmp.Count; i++) {
-                await _message.AddReactionAsync(_emotes_list_tmp[i]);
-                await Task.Delay(1000);
+                await _message.AddReactionAsync(_emotes_list_tmp[i], options: _options);
+                await limiter.Check();
             }
 
         } else {
             //send message and store
-            message = (RestUserMessage)(await _homechannel.SendMessageAsync(embed: embed.Build()));
+            message = (RestUserMessage)(await _homechannel.SendMessageAsync(embed: embed.Build(), options: _options));
+            await limiter.Check();
             _message = message;
 
             //add initial reactions
             for (int i = 0; i < _emotes_list_tmp.Count; i++)
-                await _message.AddReactionAsync(_emotes_list_tmp[i]);
+                await _message.AddReactionAsync(_emotes_list_tmp[i], options: _options);
+                await limiter.Check();
 
             //store new message id
             File.WriteAllBytes("data/rolesdata.bin", BitConverter.GetBytes(_message.Id));
@@ -221,8 +229,10 @@ class RoleHandler {
             if (_emotes_list[i].ToString() == reaction.Emote.ToString()) {
                 //get user and add role
                 SocketGuildUser user = _homeguild.GetUser(reaction.UserId);
-                if (user != null)
-                    await user.AddRoleAsync(_roles_list[i]);
+                if (user != null) {
+                    await user.AddRoleAsync(_roles_list[i], options: _options);
+                    await limiter.Check();
+                }
                 return;
             }
         }
@@ -235,8 +245,10 @@ class RoleHandler {
             if (_emotes_list[i].ToString() == reaction.Emote.ToString()) {
                 //get user and remove role
                 SocketGuildUser user = _homeguild.GetUser(reaction.UserId);
-                if (user != null)
-                    await user.RemoveRoleAsync(_roles_list[i]);
+                if (user != null) {
+                    await user.RemoveRoleAsync(_roles_list[i], options: _options);
+                    await limiter.Check();
+                }
                 return;
             }
         }
