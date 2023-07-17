@@ -117,7 +117,7 @@ class Command {
         //try building with image URL; omit image URL if failure
         Embed embed;
         try {
-            embedbuilder.WithImageUrl(msg_array[msg_array.Length - 1]);
+            embedbuilder_img.WithImageUrl(msg_array[msg_array.Length - 1]);
             embed = embedbuilder_img.Build();
         } catch {
             Console.WriteLine("WARN: _poll(): invalid URL.");
