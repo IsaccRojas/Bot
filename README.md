@@ -84,16 +84,16 @@ Reactions added and removed on this message will be used to add and remove roles
 users. The roles to allow assignment/unassignment of with a corresponding emote to react
 with are specified via the `data/roles.txt` file, per line, with the following syntax:
 
->[role name];[emote]
+>[role name];[emote];[description]
 
 e.g.
 
-	Red;red_circle
-	Blue;large_blue_circle
+	Red;red_circle;This role is for red circles.
+	Blue;large_blue_circle;This is the blue circle role.
 
 which creates the following message:
 
-![Role message example.](https://i.imgur.com/dOEKQHT.png)
+![Role message example.](https://i.imgur.com/ngb9NZd.png)
 
 At least one role must be specified for the message to be spawned. Users can then react with the
 listed emotes and receive their corresponding role, and remove the reaction to have that role removed.

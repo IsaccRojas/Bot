@@ -87,9 +87,10 @@ class RoleHandler {
     public async Task<int> LoadRoles() {      
         List<IRole> _roles_list_tmp = new List<IRole>();
         List<IEmote> _emotes_list_tmp = new List<IEmote>();
+        List<String> _descriptions_list_tmp = new List<String>();
 
         try {
-            //read roles.txt for role;emote pairs
+            //read roles.txt for role;emote;description triplets
             StreamReader fr = File.OpenText("data/roles.txt");
             var roles = _homechannel.Guild.Roles;
             var emotes = _homechannel.Guild.Emotes;
@@ -98,11 +99,13 @@ class RoleHandler {
             IEmote foundemote = null;
             bool role_found = false;
             bool emote_found = false;
-            int i = 1;
+            int i = 0;
             while ((line = fr.ReadLine()) != null) {
+                i += 1;
+
                 //get role:emote pairs in file
                 String[] line_arr = line.Split(';');
-                if (line_arr.Length == 2) {
+                if (line_arr.Length == 3) {
                     //find role in guild's roles
                     foreach (IRole role in roles) {
                         if (role.Name == line_arr[0]) {
@@ -145,12 +148,16 @@ class RoleHandler {
 
                     _roles_list_tmp.Add(foundrole);
                     _emotes_list_tmp.Add(foundemote);
+                    _descriptions_list_tmp.Add(line_arr[2]);
                     role_found = false;
                     emote_found = false;
+                } else {
+                    Console.WriteLine("WARN: data/roles.txt: line " + i + " has incorrect number of semicolon-separated fields (should be 3).");
+                    continue;
                 }
-                i += 1;
             }
             fr.Close();
+
         } catch (FileNotFoundException) {
             Console.WriteLine("WARN: data/roles.txt not found. Creating new empty roles.txt file.");
             File.CreateText("data/roles.txt");
@@ -158,7 +165,7 @@ class RoleHandler {
         }
 
         if (_roles_list_tmp.Count == 0) {
-            Console.WriteLine("WARN: data/roles.txt: could not find any valid 'role;emote' pairs.");
+            Console.WriteLine("WARN: data/roles.txt: could not find any valid 'role;emote;description' triplets.");
             return -1;
         } else
             Console.WriteLine("LoadRoles(): " + _roles_list_tmp.Count + " roles found.");
@@ -186,7 +193,7 @@ class RoleHandler {
         embed = new EmbedBuilder{ Title = "Role List" };
         String desc = "Please react with any of the following emotes to receive its corresponding role.\n";
         for (int i = 0; i < _roles_list_tmp.Count; i++)
-            desc += "\n**" + _roles_list_tmp[i].Name + "**: " + _emotes_list_tmp[i].ToString() + "\n";
+            desc += "\n**" + _roles_list_tmp[i].Name + "**: " + _emotes_list_tmp[i].ToString() + " " + _descriptions_list_tmp[i] + "\n";
         embed.WithDescription(desc);
 
         if (message != null) {
@@ -194,6 +201,10 @@ class RoleHandler {
             await message.ModifyAsync(x => x.Embed = embed.Build(), options: _options);
             await limiter.Check();
             _message = message;
+
+            //remove existing reactions
+            await _message.RemoveAllReactionsAsync(options: _options);
+            await limiter.Check();
 
             //add new reactions
             for (int i = 0; i < _emotes_list_tmp.Count; i++) {
@@ -208,9 +219,10 @@ class RoleHandler {
             _message = message;
 
             //add initial reactions
-            for (int i = 0; i < _emotes_list_tmp.Count; i++)
+            for (int i = 0; i < _emotes_list_tmp.Count; i++) {
                 await _message.AddReactionAsync(_emotes_list_tmp[i], options: _options);
                 await limiter.Check();
+            }
 
             //store new message id
             File.WriteAllBytes("data/rolesdata.bin", BitConverter.GetBytes(_message.Id));
